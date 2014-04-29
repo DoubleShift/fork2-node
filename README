@@ -1,3 +1,11 @@
-fork2-node
+Fork2-Node
 ================
 Warm 1 - Create An NPM Package : 4h
+	- edit ~/.bashrc export NODE_PATH=/usr/local/lib/node_modules then npm link will run
+	- npm install mocha -g, means golabe
+	- minimist ......
+
+Warm 2 - Setting Up Mocha For Testing : 2h
+	- little knowledge about testing, what's BDD,Chai,spec...?
+
+

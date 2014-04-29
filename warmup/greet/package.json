@@ -1,0 +1,21 @@
+{
+  "name": "greet",
+  "version": "0.0.0",
+  "description": "A simple and naive greeter",
+  "main": "index.js",
+  "bin": {
+    "greet": "./bin/greet.js"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "hello-world"
+  ],
+  "author": "DoubleShit",
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^1.18.2",
+    "chai": "^1.9.1"
+  }
+}
