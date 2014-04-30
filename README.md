@@ -9,3 +9,9 @@
 
 ## Warm 2 : *Setting Up Mocha For Testing*  `2h` ##
 - little knowledge about testing , so what's BDD, Chai, spec...?
+
+
+## Warm 3 : *CoffeScript && Makefile* `2h` ##
+- [js2coffee](http://js2coffee.org/)
+- complie after create index.coffee
+- Makefile ???
