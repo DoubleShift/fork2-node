@@ -15,3 +15,9 @@
 - [js2coffee](http://js2coffee.org/)
 - complie after create index.coffee
 - Makefile ???
+
+
+## Warm 4 : *Implement CoffeeScript’s Class System* `5h` ##
+- Can't understand ! Code for what?  So,delay！！！
+- the export module need return a function similar *Class*, and in the function you must return a function.init().
+

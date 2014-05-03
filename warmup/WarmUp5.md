@@ -1,185 +1,498 @@
-# Implement CoffeeScript's Class System
+# Implement Class Inheritance
 
-In this lesson we'll practice working with prototype and constructor by implementing a basic class system similar to CoffeeScript's class.
+In this lesson we'll implement class inheritance and super method call. In the process we'll gain more experience using the prototype chain.
 
-In the next lesson we'll implement inheritance.
+# How CoffeeScript Implements Inheritance
 
-# Start Project
+If you look at the CoffeeScript compiled output, you'd see that it uses the `__extends` method to help setup the inheritance relationship between parent and child. Here's the `__extends` function formatted and commented:
 
-Let's start a new project called `Class`.
+```js
+var __hasProp = {}.hasOwnProperty;
+var __extends = function(child, parent) {
+  // Copy "class properties" from parent to child
+  for (var key in parent) {
+    if (__hasProp.call(parent, key)) child[key] = parent[key];
+  }
 
-+ `git init` and `npm init` in a new directory.
-+ `npm install mocha chai --save-dev`
+  // This is a "surrogate constructor". It's used to create the prototype of the child class.
+  function ctor() {
+    // The surrogate constructor should satisfy "child.prototype.constructor === child"
+    this.constructor = child;
+  }
 
-# A CoffeeScript Zoo
+  // Setting up inheritance by connecting the prototype chain from child to parent
+  ctor.prototype = parent.prototype;
+  child.prototype = new ctor;
 
-Let's use the [example class hierarchy](http://jashkenas.github.io/coffee-script/#classes) from CoffeeScript's documentation.
+  // Setting up `__super__` as a convenience property for access.
+  // It doesn't affect the prototype chain.
+  child.__super__ = parent.prototype;
+  return child;
+};
+```
 
-In `animals.coffee` add:
+This is a lot to understand. Just have a rough idea about what `__extends` need to do to setup the inheritance.
+
+# Property Lookup Examples
+
+To see how we want the prototype chain to work let's walk through a few examples. Suppose we have the following classes:
+
+```js
+var A = Class({
+  a: 1
+
+});
+
+var B = Class({
+  b: 2
+},A);
+```
+
+The `a` property is in the prototype of `A`. The `b` property is in the prototype of `B`. Suppose we have an instance of `B`:
+
+```js
+var b = new B()
+b.c = 3;
+```
+
+To look up `b.c`:
+
+```
+// has the c property? yes.
+b.c
+
+// return b.c
+// => 3
+```
+
+To look up `b.b`:
+
+```
+// Has the b property? No. Look up in the prototype.
+b.b
+
+// Has the b property? Yes.
+b.constructor.prototype.b
+
+// return b.constructor.prototype.b
+// => 2
+```
+
+To look up `b.a`:
+
+```
+// Has the a property? No. Look up in prototype.
+b.a
+
+// Has the a property? No. Look up in the prototype.
+b.constructor.prototype.a
+
+// Has the a property? Yes.
+b.constructor.prototype.constructor.prototype.a
+
+// return b.constructor.prototype.constructor.prototype.a
+// => 1
+```
+
+To look up `b.d` (it doesn't exist):
+
+```
+// Has the d property? No. Look up in prototype.
+b.d
+
+// Has the d property? No. Look up in the prototype.
+b.constructor.prototype.d
+
+// Has the d property? No. No more prototype.
+b.constructor.prototype.constructor.prototype.d
+
+// return b.constructor.prototype.constructor.prototype.d
+// => undefined
+```
+
+# Checking Answer
+
+Again, we'll use the tests written in [https://github.com/hayeah/fork2-node-class-spec](https://github.com/hayeah/fork2-node-class-spec) to verify that your work is correct.
+
+Get the latest tests by `git pull`.
+
+# Implement Methods Inheritance
+
+For the first step we'll use prototype chain to setup method inheritance (without the ability to call super).
+
+*Please do this exercise on your own, and don't look at CoffeeScript's `__extend`.*
+
+**Implement**: Methods inheritance with prototype chain.
+
+Example:
+
+```js
+var A = Class({
+  a: function() {
+    return 1;
+  }
+});
+
+var B = Class({
+  b: function() {
+    return 2;
+  }
+},A);
+
+var a = new A();
+a.a(); # => 1
+a.b;   # undefined
+
+var b = new B();
+b.a(); # => 1
+b.b(); # => 2
+```
+
+Hint: `subclass.prototype.constructor.prototype === superclass.prototype` should be true.
+
+Pass: `mocha verify -R spec -g 'Implement Methods Inheritance'`
+
+```
+Implement Methods Inheritance
+  b
+    ✓ should be an instance of B
+    ✓ should be able to call method `a` through inheritance
+    ✓ should not have method `a` defined directly on the object
+    ✓ should not have method `a` defined directly on the prototype of B
+```
+
+**Commit**
+
+```
+git commit
+```
+
+# Implement The Super Class Property
+
+For a subclass we want to set its `__super__` property to be its parent.
+
+**Implement**: The `__super__` class property should return its super class (or Object by default).
+
+Example:
+
+```js
+var A = Class({
+  a: function() {
+    return 1;
+  }
+});
+
+var B = Class({
+  b: function() {
+    return 2;
+  }
+},A);
+B.__super__ # => A
+A.__super__ # => Object
+```
+
+Pass: `mocha verify -R spec -g "Implement Class __super__"`
+
+```
+Implement Class __super__
+  ✓ should set the __super__ class property to the parent class
+  ✓ should set Object as the default __super__ class
+```
+
+**Commit**
+
+```
+git commit
+```
+
+# Implement Super
+
+Let's make it possible to call the parent class methods via `super`.
+
+**Implement** `super(name,arg1,arg2,...)` should call the parent's method.
+
+Example:
+
+```js
+var A = Class({
+  foo: function(a,b) {
+    return [this.n,a,b];
+  }
+});
+
+var B = Class({
+  foo: function(a,b) {
+    return this.super("foo",a*10,b*100);
+  }
+},A);
+
+var b = new B();
+b.n = 1;
+
+c.foo(2,3); // => [1,20,300]
+```
+
+Hint: What's the difference between `A.prototype.foo(1,2)` and `A.prototype.foo.call(this,1,2)`?
+
+Hint: Use [arguments](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/arguments) and [Function.prototype.apply](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/apply) to call the super method.
+
+Hint: To get `arg1, arg2, ...` as an array, you do `[].slice.call(arguments,1)`. [Read this](http://stackoverflow.com/questions/7056925/how-does-array-prototype-slice-call-work).
+
+Hint: This method is fairly complicated. You should focus on passing one test before moving on to the next one.
+
+Pass: `mocha verify -R spec -g "Implement Super"`
+
+```
+  Implement Super
+    ✓ should define the `super` method on the prototype
+    ✓ should be able to call super method without arguments
+    ✓ should call super method with the correct `this` context
+    ✓ should be able to call super method with multiple arguments
+```
+
+**Commit**
+
+```
+git commit
+```
+
+# Problem With Calling Super's Super
+
+Your implementation probably has a subtle bug when a super method calls its super method.
+
+In `abc.js` put the following code:
+
+```js
+var Class = require("./index.js");
+
+var A = Class({
+  foo: function(a,b) {
+    return [a,b];
+  }
+});
+
+var B = Class({
+  foo: function(a,b) {
+    return this.super("foo",a*10,b*100);
+  }
+},A);
+
+var C = Class({
+  foo: function(a,b) {
+    return this.super("foo",a*10,b*100);
+  }
+},B);
+
+var c = new C()
+c.foo(1,2); // should get [100,20000]
+```
+
+When you run it, you'd (probably) get this error:
+
+```
+$ node abc.js
+RangeError: Maximum call stack size exceeded
+```
+
+What this error tells you is that you have [infinite recursion](http://stackoverflow.com/questions/6095530/maximum-call-stack-size-exceeded-error) in your code.
+
+Let's try to find where the problem is by putting in a few console.log statements in `abc.js`:
+
+```js
+var Class = require("./index.js");
+
+var A = Class({
+  foo: function(a,b) {
+    console.log("A#foo",a,b);
+    return [a,b];
+  }
+});
+
+var B = Class({
+  foo: function(a,b) {
+    console.log("B#foo",a,b);
+    return this.super("foo",a*10,b*100);
+  }
+},A);
+
+var C = Class({
+  foo: function(a,b) {
+    console.log("C#foo",a,b);
+    return this.super("foo",a*10,b*100);
+  }
+},B);
+
+var c = new C()
+c.foo(1,2);
+```
+
+**Note** `B#foo` means the instance method `foo` of the `B` class. We borrow this notation from Ruby.
+
+Try again:
+
+```
+$ node abc.js
+...
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+B#foo Infinity Infinity
+
+RangeError: Maximum call stack size exceeded
+```
+
+`B#foo` is being called over and over again.
+
+**Question**: Why is the infinite recursion happening?
+
+Hint: What is the value of `this.super` in `C#foo`? What is the value of `this.super` in `B#foo`? Are they the same or are they different?
+
+
+## Why Infinite Recursion Is Happening
+
+In your implementation, you probably defined a different `super` method on the prototype of each class:
+
++ `B.prototype.super` would invoke the methods in `A.prototype`
++ `C.prototype.super` would invoke the methods in `B.prototype`
+
+This seems reasonable but it doesn't work because `this.super` would always call the same function. In our example `C.prototype.super` shadows `B.prototype.super`:
+
+```
+var B = Class({
+  foo: function(a,b) {
+    // this.super === C.prototype.super
+    // this calls B.prototype.foo
+    return this.super("foo",a*10,b*100);
+  }
+},A);
+
+var C = Class({
+  foo: function(a,b) {
+    // this.super === C.prototype.super
+    // this calls B.prototype.foo
+    return this.super("foo",a*10,b*100);
+  }
+},B);
+```
+
+# Fixing Infinite Recursion (Part 1)
+
+CoffeeScript solves this problem by explictly calling the super through its class.:
 
 ```coffee
-alert = (msg) -> console.log(msg)
-
-class Animal
-  constructor: (@name) ->
-
-  move: (meters) ->
-    alert @name + " moved #{meters}m."
-
-class Snake extends Animal
-  move: ->
-    alert "Slithering..."
-    super 5
-
 class Horse extends Animal
   move: ->
     alert "Galloping..."
     super 45
-
-sam = new Snake "Sammy the Python"
-tom = new Horse "Tommy the Palomino"
-
-sam.move()
-tom.move()
 ```
 
-Then run it:
-
-```
-$ coffee animals.coffee
-Slithering...
-Sammy the Python moved 5m.
-Galloping...
-Tommy the Palomino moved 45m.
-```
-
-You can see the the compiled JavaScript:
+compiles to:
 
 ```js
-$ coffee --compile --print --bare animals.coffee
-var Animal, Horse, Snake, alert, sam, tom,
-
-// ...
-
-alert = function(msg) {
-  return console.log(msg);
+Horse.prototype.move = function() {
+  alert("Galloping...");
+  //
+  return Horse.__super__.move.call(this, 45);
 };
-
-Animal = (function() {
-  function Animal(name) {
-    this.name = name;
-  }
-
-  Animal.prototype.move = function(meters) {
-    return alert(this.name + (" moved " + meters + "m."));
-  };
-
-  return Animal;
-
-})();
-// ...
 ```
 
-# Our Own Class Method
-
-We'll imitate CoffeeScript's `class` by implementing our own `Class` function in JavaScript. It looks like:
+We could do super call in the same way. Our example would look like:
 
 ```js
-Animal = Class({
-  constructor: function(name) {
-    this.name = name;
-  },
-  move: function(meters) {
-    alert(this.name + "moved " + meters + "m.");
+var B = Class({
+  foo: function(a,b) {
+    return B.super("foo",a*10,b*100);
   }
-});
+},A);
 
-Snake = Class({
-  move: {
-    alert("Slithering...");
-    this.super("move",5);
+var C = Class({
+  foo: function(a,b) {
+    // this.super === C.prototype.super
+    // this calls B.prototype.foo
+    return C.super("foo",a*10,b*100);
   }
-}, Animal);
-
-Horse = Class({
-  move: {
-    alert("Galloping...");
-    this.super("move",45);
-  }
-}, Animal);
-
-sam = new Snake("Sammy the Python");
-tom = new Horse("Tommy the Palamino");
+},B);
 ```
 
-# Checking Your Work Is Correct
+Question: Would `this.constructor.__super__.foo.call(this,a,b)` work?
 
-Clone the test suite into your project (it should be the "verify" directory):
+# Bonus: Fixing Infinite Recursion (Part 2)
 
-`git clone https://github.com/hayeah/fork2-node-class-spec.git verify`
+There's an hack to make our original API work so our users don't have to explicitly state the class of a super call.
 
-You can check your answer against the test suite.
+Remember that our problem was that `this.super` is the same function whether it's called in `C#foo` or `B#foo`. Even though `this.super` is the same, can we change its behaviour each time it's called?
 
-# Implement Class Constructor
++ The first time `this.super` is called in `C#foo`, we want it to call `C.__super__.foo`
++ The second time `this.super` is called in `B#foo`, we want it to call `B.__super__.foo`
 
-Let's look at a very simple class `Foo`:
+The `super` method should maintain a state called `current_class`.
+
++ When executing `C#foo`, the current_class is `C`.
++ When executing `B#foo`, the current_class is `B`.
++ When executing `A#foo`, the current_class is `A`.
+
+We can keep track of `current_class` in a variable closed over by the `super` function. For example:
 
 ```js
-function Foo() {
-  this.a = 10;
+var current_class = C;
+C.prototype.super = function(name) {
+  // changes current_class when calling super
 }
-Foo.prototype.b = 20;
-foo = new Foo();
-foo2 = new Foo();
-foo.a // => 10
-foo.b // => 20
-foo.b = 30
-foo.b // => 30
-
-foo2.a // => 10
-foo2.b // => 20
-Foo.prototype.b = 40;
-foo.b // => ?
-foo2.b // => ?
 ```
 
-**Question**: What is `foo.constructor`?
+A sample stack trace in pseudocode for calling `C#foo` is:
 
-**Question**: Why is `foo2.b` 20 even though you didn't assign a value to it?
+```
+current_class = C;
+C#foo
+  this.super (C.prototype.super)
+    set current_class as current_class.__super__ (B)
+    call current_class's foo (B#foo)
+      this.super (C.prototype.super)
+        set current_class as current_class.__super__ (A)
+        call current_class's foo (A#foo)
+        set current_class as B
+    set current_class as C
+```
 
-**Question**: What are the values of `foo.b` and `foo2.b` after you assign 40 to `Foo.prototype.b`?
+Note that when the super call exits from `A#foo`, the `current_class` goes back to `B`. When the super call exits from `B#foo`, the `current_class` goes back to `C`.
 
-If you are not sure how this works, read [JavaScript constructors, prototypes, and the new keyword](http://pivotallabs.com/javascript-constructors-prototypes-and-the-new-keyword).
-
-**Implement**: Can define classes with the `Class` function.
-
-Hint: A "class" in JavaScript is just a constructor function. So `Class` should return a function.
+**Implement** Should be able to call super's super by manipulating the current class of a super call.
 
 Example:
 
 ```js
-var Foo = Class({
-  initialize: function(a,b) {
-    this.a = a;
-    this.b = b;
+var A = Class({
+  foo: function(a,b) {
+    return [a,b];
   }
 });
+
+var B = Class({
+  foo: function(a,b) {
+    return this.super("foo",a*10,b*100);
+  }
+},A);
+
+var C = Class({
+  foo: function(a,b) {
+    return this.super("foo",a*10,b*100);
+  }
+},B);
+
+
+var c = new C();
+c.foo(1,2); => [100,20000]
 ```
 
-It should also be possible to define a class without a constructor:
-
-```js
-var Bar = Class({});
-bar = new Bar();
-```
-
-Pass: `mocha verify -R spec -g 'Implement Class Constructor'`
+Pass: `mocha verify -R spec -g "Implement Super's Super"`
 
 ```
-Implement Class Constructor
-  ✓ should return a class constructor function
-  ✓ should be able define a class
-  ✓ should be able define a class without constructor
+Implement Super's Super
+  ✓ should be able to call super's super
 ```
 
 **Commit**
@@ -188,70 +501,27 @@ Implement Class Constructor
 git commit
 ```
 
-# Implement Instance Methods
+# Bonus: JS Superman - Implement John Resig's _super Method
 
-Methods are just properties that are functions. To define a method, assign a function to the constructor's prototype:
-
-```js
-// The Animal class
-function Animal() {}
-// Define the move method
-Animal.prototype.move = function() {
-  // ...
-};
-```
-
-**Question:** How is assigning a function in the constructor different? Like:
+[John Resig](http://ejohn.org) (jQuery's inventor) came up with a very cool technique to call super methods. It looks like:
 
 ```js
-// The Animal class
-function Animal() {
-  // Define the move method
-  this.move = function() {
-    // ...
-  };
-}
-```
-
-**Implement**: Can define instance methods
-
-Example:
-
-```
-Foo = Class({
-  initialize: function(a,b) {
-    this.a = a;
-    this.b = b;
-  },
-
-  getA: function() {
-    return this.a;
-  },
-
-  getB: function() {
-    return this.b;
+var B = Class({
+  foo: function(a,b) {
+    // calls A.prototype.foo
+    return this._super(a*10,b*100);
   }
-});
-
-foo = new Foo(1,2);
-foo.getA(); // => 1
-foo.getB(); // => 2
+},A);
 ```
 
-Pass: `mocha verify -R spec -g 'Implement Instance Methods'`
+`B#foo` would call `A.prototype.foo` magically. Both the class and the method name are implicit.
 
-```
-Implement Instance Methods
-  ✓ should be able to define methods
-  ✓ should not define `initialize` as a method
-```
+Read [Simple JavaScript Inheritance](http://ejohn.org/blog/simple-javascript-inheritance) to see how it's done.
+
+**Implement** the jresig's `_super`.
 
 **Commit**
 
 ```
 git commit
 ```
-
-# Push To Github
-
-Push your project to Github as `fork2-node-class`.
